@@ -169,19 +169,20 @@ tf-init: tf-version
 #   AWS_REGION       — derived from tfvars if configure-aws-credentials not used
 #
 tf-init-ci: tf-version
-	@test -n "$(ORG)"            || (echo "❌ ORG not set. e.g. make tf-init-ci ORG=terrorgem"; exit 1)
-	@test -n "$(TF_STATE_BUCKET)" || (echo "❌ TF_STATE_BUCKET not set in environment"; exit 1)
-	@test -n "$(KMS_KEY_ID)"      || (echo "❌ KMS_KEY_ID not set in environment"; exit 1)
-	@test -n "$(AWS_REGION)"      || (echo "❌ AWS_REGION not set in environment"; exit 1)
+	@test -n "$(ORG)"          || (echo "❌ ORG not set. e.g. make tf-init-ci ORG=terrorgem"; exit 1)
+	@test -n "$${TF_STATE_BUCKET}" || (echo "❌ TF_STATE_BUCKET not set in environment"; exit 1)
+	@test -n "$${KMS_KEY_ID}"      || (echo "❌ KMS_KEY_ID not set in environment"; exit 1)
+	@test -n "$${AWS_REGION}"      || (echo "❌ AWS_REGION not set in environment"; exit 1)
 	@rm -rf $(TF_DIR)/.terraform
+	@echo "[INFO] Backend: s3://$${TF_STATE_BUCKET}/$(ORG)/$(PARTITION)/control-plane/terraform.tfstate"
 	@export TF_PLUGIN_CACHE_DIR=; \
 	terraform -chdir=$(TF_DIR) init \
 	  -input=false \
 	  -lockfile=readonly \
-	  -backend-config="bucket=$(TF_STATE_BUCKET)" \
-	  -backend-config="key=$(BACKEND_KEY)" \
-	  -backend-config="region=$(AWS_REGION)" \
-	  -backend-config="kms_key_id=$(KMS_KEY_ID)" \
+	  -backend-config="bucket=$${TF_STATE_BUCKET}" \
+	  -backend-config="key=$(ORG)/$(PARTITION)/control-plane/terraform.tfstate" \
+	  -backend-config="region=$${AWS_REGION}" \
+	  -backend-config="kms_key_id=$${KMS_KEY_ID}" \
 	  -backend-config="encrypt=true"
 
 # ============================================================
@@ -193,17 +194,18 @@ tf-init-ci: tf-version
 #
 tf-init-seed: tf-version
 	@test -n "$(ORG)"            || (echo "❌ ORG not set. e.g. make tf-init-seed ORG=terrorgem"; exit 1)
-	@test -n "$(TF_STATE_BUCKET)" || (echo "❌ TF_STATE_BUCKET not set in environment"; exit 1)
-	@test -n "$(KMS_KEY_ID)"      || (echo "❌ KMS_KEY_ID not set in environment"; exit 1)
-	@test -n "$(AWS_REGION)"      || (echo "❌ AWS_REGION not set in environment"; exit 1)
+	@test -n "$${TF_STATE_BUCKET}" || (echo "❌ TF_STATE_BUCKET not set in environment"; exit 1)
+	@test -n "$${KMS_KEY_ID}"      || (echo "❌ KMS_KEY_ID not set in environment"; exit 1)
+	@test -n "$${AWS_REGION}"      || (echo "❌ AWS_REGION not set in environment"; exit 1)
 	@rm -rf $(TF_DIR)/.terraform
+	@echo "[INFO] Backend: s3://$${TF_STATE_BUCKET}/$(ORG)/$(PARTITION)/control-plane/terraform.tfstate"
 	@terraform -chdir=$(TF_DIR) init \
 	  -input=false \
 	  -reconfigure \
-	  -backend-config="bucket=$(TF_STATE_BUCKET)" \
-	  -backend-config="key=$(BACKEND_KEY)" \
-	  -backend-config="region=$(AWS_REGION)" \
-	  -backend-config="kms_key_id=$(KMS_KEY_ID)" \
+	  -backend-config="bucket=$${TF_STATE_BUCKET}" \
+	  -backend-config="key=$(ORG)/$(PARTITION)/control-plane/terraform.tfstate" \
+	  -backend-config="region=$${AWS_REGION}" \
+	  -backend-config="kms_key_id=$${KMS_KEY_ID}" \
 	  -backend-config="encrypt=true"
 
 # ============================================================
