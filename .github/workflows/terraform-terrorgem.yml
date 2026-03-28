@@ -8,6 +8,7 @@ on:
       - "seed-terraform/**"
       - "configs/orgs/terrorgem.tfvars"
       - ".github/workflows/terraform-terrorgem.yml"
+      - "Makefile"
   workflow_dispatch:
 
 # One deployment at a time per branch.
