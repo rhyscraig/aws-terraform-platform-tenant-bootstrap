@@ -3,7 +3,7 @@
 *.tfstate
 *.tfstate.*
 *.tfplan
-.terraform.lock.hcl
+# .terraform.lock.hcl is intentionally committed (pin provider versions for reproducible CI)
 crash.log
 
 # Terraform temp files written to repo root by bootstrap script
