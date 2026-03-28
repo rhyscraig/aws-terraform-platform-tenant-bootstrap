@@ -317,8 +317,8 @@ echo "════════════════════════�
 # INSTALL TERRAFORM (if needed)
 ########################################
 
-TF_VERSION="1.14.5"
-if ! command -v terraform >/dev/null 2>&1; then
+TF_VERSION="1.10.0"
+if ! command -v terraform >/dev/null 2>&1 || ! terraform version | grep -qE "v([2-9]|1\.[1-9][0-9])"; then
   echo "[INFO] Installing terraform \${TF_VERSION}..."
   TF_ARCH="\$(uname -m)"
   [[ "\${TF_ARCH}" == "x86_64" ]] && TF_ARCH="amd64" || TF_ARCH="arm64"
@@ -378,13 +378,13 @@ git config --global url."https://\${GITHUB_TOKEN}@github.com/".insteadOf "https:
 echo "[INFO] Waiting 10s for IAM propagation..."
 sleep 10
 
-echo "[INFO] Initialising Terraform backend"
-terraform -chdir=seed-terraform init -input=false -reconfigure -lock-timeout=60s \
-  -backend-config="bucket=\${TF_STATE_BUCKET}" \
-  -backend-config="key=${TFVARS_BASENAME}/\${PARTITION}/control-plane/terraform.tfstate" \
-  -backend-config="region=\${AWS_REGION}" \
-  -backend-config="encrypt=true" \
-  -backend-config="kms_key_id=\${KMS_KEY_ID}"
+echo "[INFO] Initialising Terraform backend via make tf-init-seed"
+# Export the values Phase 1 produced so the Makefile backend-config targets can use them.
+export TF_STATE_BUCKET="\${TF_STATE_BUCKET}"
+export KMS_KEY_ID="\${KMS_KEY_ID}"
+export AWS_REGION="\${AWS_REGION}"
+
+make tf-init-seed ORG="${TFVARS_BASENAME}"
 
 VARFILE="\$(pwd)/configs/orgs/\${TFVARS_BASENAME}.tfvars"
 
@@ -451,12 +451,11 @@ terraform -chdir=seed-terraform state list
 echo ""
 echo "✅ Bootstrap + imports complete."
 print_exports
-echo "Next steps:"
-echo "  1. Copy the exports above to your local terminal"
-echo "  2. Export secrets to GitHub:"
+echo "Next steps (on your local machine):"
+echo "  1. Copy the 'export ...' lines above into your terminal"
+echo "  2. Store them in GitHub:"
 echo "       make create-github-environment ORG=${TFVARS_BASENAME}"
-echo "  3. Trigger the GitHub Actions workflow:"
-echo "       terraform-deploy.yml → org: ${TFVARS_BASENAME}"
+echo "  3. Push to main — the GitHub Actions pipeline will plan → approve → apply"
 EOF
 
 chmod +x "${OUTPUT_BOOTSTRAP}"
