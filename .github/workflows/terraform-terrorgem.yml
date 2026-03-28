@@ -1,0 +1,157 @@
+name: "Terraform — terrorgem"
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "seed-terraform/**"
+      - "configs/orgs/terrorgem.tfvars"
+      - ".github/workflows/terraform-terrorgem.yml"
+  workflow_dispatch:
+
+# Restrict to one concurrent run per branch; cancel in-progress if a newer
+# push supersedes it (but not during apply — the apply job is protected by
+# the approval gate which already serialises deployments in practice).
+concurrency:
+  group: terraform-terrorgem-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  id-token: write   # required for OIDC token exchange
+  contents: read
+
+env:
+  TF_VERSION:    "1.10.0"
+  AWS_REGION:    "eu-west-2"
+  ORG:           "terrorgem"
+  TF_STATE_KEY:  "terrorgem/aws/control-plane/terraform.tfstate"
+  TF_VAR_FILE:   "configs/orgs/terrorgem.tfvars"
+  TF_DIR:        "seed-terraform"
+
+jobs:
+  # ── 1. PLAN ────────────────────────────────────────────────────────────────
+  # Runs immediately on every trigger (no approval gate).
+  # Uses the `terrorgem` environment to access all secrets.
+  # Encrypted plan is uploaded to the logs S3 bucket for the apply job.
+  plan:
+    name: "Plan"
+    runs-on: ubuntu-latest
+    environment: terrorgem
+    outputs:
+      plan_s3_key: ${{ steps.upload-plan.outputs.plan_s3_key }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.SEED_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform ${{ env.TF_VERSION }}
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Terraform Init
+        run: |
+          terraform -chdir="${TF_DIR}" init \
+            -input=false \
+            -lockfile=readonly \
+            -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" \
+            -backend-config="key=${TF_STATE_KEY}" \
+            -backend-config="region=${AWS_REGION}" \
+            -backend-config="kms_key_id=${{ secrets.KMS_KEY_ID }}" \
+            -backend-config="encrypt=true"
+
+      - name: Terraform Plan
+        run: |
+          terraform -chdir="${TF_DIR}" plan \
+            -var-file="../${TF_VAR_FILE}" \
+            -input=false \
+            -out=tfplan
+
+      - name: Encrypt and upload plan to S3
+        id: upload-plan
+        run: |
+          PLAN_KEY="${ORG}/plans/tfplan-${{ github.sha }}-${{ github.run_id }}.enc"
+          openssl enc -aes-256-cbc -pbkdf2 -iter 100000 \
+            -pass pass:"${{ secrets.PLAN_PASSPHRASE }}" \
+            -in "${TF_DIR}/tfplan" \
+            -out tfplan.enc
+          aws s3 cp tfplan.enc "s3://${{ secrets.TF_LOGS_BUCKET }}/${PLAN_KEY}"
+          echo "plan_s3_key=${PLAN_KEY}" >> "$GITHUB_OUTPUT"
+          echo "✅ Plan uploaded to s3://${{ secrets.TF_LOGS_BUCKET }}/${PLAN_KEY}"
+
+  # ── 2. GATE ────────────────────────────────────────────────────────────────
+  # Human approval step. Uses the `terrorgem-approve` environment which has
+  # no secrets (reviewers approve after seeing the plan output above).
+  gate:
+    name: "Approve"
+    runs-on: ubuntu-latest
+    needs: plan
+    environment: terrorgem-approve
+    steps:
+      - name: Approved
+        run: echo "✅ Deployment approved — proceeding to apply"
+
+  # ── 3. APPLY ───────────────────────────────────────────────────────────────
+  # Waits for both plan and gate. Downloads the exact plan produced in step 1,
+  # decrypts it, then applies. No re-plan — what was approved is what runs.
+  apply:
+    name: "Apply"
+    runs-on: ubuntu-latest
+    needs: [plan, gate]
+    environment: terrorgem
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.SEED_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform ${{ env.TF_VERSION }}
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Terraform Init
+        run: |
+          terraform -chdir="${TF_DIR}" init \
+            -input=false \
+            -lockfile=readonly \
+            -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" \
+            -backend-config="key=${TF_STATE_KEY}" \
+            -backend-config="region=${AWS_REGION}" \
+            -backend-config="kms_key_id=${{ secrets.KMS_KEY_ID }}" \
+            -backend-config="encrypt=true"
+
+      - name: Download and decrypt plan from S3
+        run: |
+          aws s3 cp \
+            "s3://${{ secrets.TF_LOGS_BUCKET }}/${{ needs.plan.outputs.plan_s3_key }}" \
+            tfplan.enc
+          openssl enc -d -aes-256-cbc -pbkdf2 -iter 100000 \
+            -pass pass:"${{ secrets.PLAN_PASSPHRASE }}" \
+            -in tfplan.enc \
+            -out "${TF_DIR}/tfplan"
+          echo "✅ Plan decrypted"
+
+      - name: Terraform Apply
+        run: |
+          terraform -chdir="${TF_DIR}" apply \
+            -input=false \
+            tfplan
+
+      - name: Clean up plan artifact from S3
+        if: always()
+        run: |
+          aws s3 rm "s3://${{ secrets.TF_LOGS_BUCKET }}/${{ needs.plan.outputs.plan_s3_key }}" \
+            || echo "⚠️ Could not delete plan artifact (non-fatal)"
