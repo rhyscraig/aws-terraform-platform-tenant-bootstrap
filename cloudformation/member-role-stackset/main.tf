@@ -1,5 +1,8 @@
 locals {
-  name_prefix = var.stackset_name
+  # Role name matches local.member_role_name in the root module:
+  # "${name_prefix}-cicd-role" (stackset_name already contains name_prefix)
+  # We drop the stackset suffix so the name is simply "<name_prefix>-cicd-role"
+  cicd_role_name = replace(var.stackset_name, "-member-role", "-cicd-role")
 }
 
 resource "aws_cloudformation_stack_set" "this" {
@@ -19,22 +22,19 @@ resource "aws_cloudformation_stack_set" "this" {
       MemberRole = {
         Type = "AWS::IAM::Role"
         Properties = {
-          RoleName = "${local.name_prefix}-cicd-role"
+          # Consistent with local.member_role_name in the root module
+          RoleName = local.cicd_role_name
           Path     = var.member_role_path_prefix
 
           AssumeRolePolicyDocument = {
             Version = "2012-10-17"
             Statement = [{
+              # Trust the management account OIDC role to assume this role cross-account
               Effect = "Allow"
               Principal = {
-                Service = "cloudformation.amazonaws.com"
+                AWS = var.management_role_arn
               }
-              Action = "sts:AssumeRole"
-              Condition = {
-                StringEquals = {
-                  "aws:PrincipalOrgID" = var.organization_id
-                }
-              }
+              Action = ["sts:AssumeRole", "sts:TagSession"]
             }]
           }
 

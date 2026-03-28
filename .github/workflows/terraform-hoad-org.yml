@@ -1,4 +1,4 @@
-name: "Terraform — terrorgem"
+name: "Terraform — hoad-org seed"
 
 on:
   push:
@@ -7,13 +7,14 @@ on:
     paths:
       - "seed-terraform/**"
       - "configs/orgs/terrorgem.tfvars"
-      - ".github/workflows/terraform-terrorgem.yml"
+      - ".github/workflows/terraform-hoad-org.yml"
+      - "cloudformation/**"
       - "Makefile"
   workflow_dispatch:
 
 # One deployment at a time per branch.
 concurrency:
-  group: terraform-terrorgem-${{ github.ref }}
+  group: terraform-hoad-org-${{ github.ref }}
   cancel-in-progress: false
 
 permissions:
@@ -30,14 +31,14 @@ env:
 jobs:
   # ── 1. PLAN ────────────────────────────────────────────────────────────────
   # Runs immediately — no approval gate.
-  # Uses `terrorgem` environment (has secrets).
+  # Uses `hoad-org` environment (has secrets).
   # Encrypted plan is written to the logs S3 bucket for the apply job.
   plan:
     name: "Plan"
     runs-on: ubuntu-latest
-    environment: terrorgem
+    environment: hoad-org
     # Expose secrets as env vars for the entire job so all make targets can
-    # use them as shell variables ($${TF_STATE_BUCKET} etc.) without per-step
+    # use them as shell variables (${TF_STATE_BUCKET} etc.) without per-step
     # env: blocks.
     env:
       TF_STATE_BUCKET: ${{ secrets.TF_STATE_BUCKET }}
@@ -82,13 +83,13 @@ jobs:
 
   # ── 2. GATE ────────────────────────────────────────────────────────────────
   # Human approval step.
-  # Uses `terrorgem-approve` environment (no secrets — reviewers approve
+  # Uses `hoad-org-approve` environment (no secrets — reviewers approve
   # after seeing the plan output above, before any apply runs).
   gate:
     name: "Approve"
     runs-on: ubuntu-latest
     needs: plan
-    environment: terrorgem-approve
+    environment: hoad-org-approve
     steps:
       - name: Approved
         run: echo "✅ Deployment approved — proceeding to apply"
@@ -100,7 +101,7 @@ jobs:
     name: "Apply"
     runs-on: ubuntu-latest
     needs: [plan, gate]
-    environment: terrorgem
+    environment: hoad-org
     env:
       TF_STATE_BUCKET: ${{ secrets.TF_STATE_BUCKET }}
       KMS_KEY_ID: ${{ secrets.KMS_KEY_ID }}

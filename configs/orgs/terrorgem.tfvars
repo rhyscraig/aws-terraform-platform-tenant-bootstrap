@@ -24,22 +24,25 @@ member_role_path_prefix = "/"
 github_approver_teams = []
 
 # Subjects for the GitHub Actions OIDC trust policy.
-# The bootstrap script derives these from the git remote — keep in sync here for Terraform.
-# Repo: rhyscraig/aws-terraform-platform-tenant-bootstrap (the seed pipeline repo)
+# Add an entry for each repo + environment that needs to authenticate via OIDC.
+# Convention: "repo:<org>/<repo>:environment:<gh-env-name>"
 github_oidc_subjects = [
+  # Seed pipeline (this repo) — hoad-org environment
   "repo:rhyscraig/aws-terraform-platform-tenant-bootstrap:ref:refs/heads/main",
-  "repo:rhyscraig/aws-terraform-platform-tenant-bootstrap:environment:terrorgem",
+  "repo:rhyscraig/aws-terraform-platform-tenant-bootstrap:environment:hoad-org",
+
+  # Terrorgem solution — production deployment
+  "repo:rhyscraig/aws-terraform-solutions-terrorgem:ref:refs/heads/main",
+  "repo:rhyscraig/aws-terraform-solutions-terrorgem:environment:terrorgem-prd",
 ]
 
 ############################################
 # STACKSET
 ############################################
 
-# Leave empty initially — add OU IDs to deploy the cross-account cicd-role
-# into the terrorgem dev/prod accounts via CloudFormation StackSet.
-# Run: aws organizations list-organizational-units-for-parent --parent-id <root-id>
-# to discover OU IDs, then add them here and re-apply.
-target_organizational_unit_ids = []
+# OU IDs to deploy the cross-account cicd-role into member accounts via StackSet.
+# ou-4if6-1edkqgjc = Production OU (account 767828739298)
+target_organizational_unit_ids = ["ou-4if6-1edkqgjc"]
 
 ############################################
 # TAGGING
