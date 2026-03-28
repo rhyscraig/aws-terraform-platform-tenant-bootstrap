@@ -74,8 +74,9 @@ TFVARS_TF   := ../configs/orgs/$(ORG).tfvars
 # --- BACKEND CONFIG (derived from tfvars; can be overridden by env) ---
 # AWS_REGION and PARTITION are parsed at make-parse time so backend config
 # targets can use them without requiring the caller to set them manually.
-_TF_AWS_REGION := $(shell awk -F'"' '/^[[:space:]]*aws_region[[:space:]]*=/{print $$2}' $(TFVARS_ROOT) 2>/dev/null)
-_TF_PARTITION  := $(shell awk -F'"' '/^[[:space:]]*partition[[:space:]]*=/{print $$2}' $(TFVARS_ROOT) 2>/dev/null)
+# Match only top-level (unindented) vars — ^var avoids matching nested blocks like default_tags
+_TF_AWS_REGION := $(shell awk -F'"' '/^aws_region[[:space:]]*=/{print $$2; exit}' $(TFVARS_ROOT) 2>/dev/null)
+_TF_PARTITION  := $(shell awk -F'"' '/^partition[[:space:]]*=/{print $$2; exit}' $(TFVARS_ROOT) 2>/dev/null)
 
 # Environment overrides take precedence (configure-aws-credentials sets AWS_REGION)
 AWS_REGION ?= $(_TF_AWS_REGION)
