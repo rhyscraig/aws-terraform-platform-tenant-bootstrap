@@ -48,6 +48,11 @@ jobs:
           role-to-assume: ${{ secrets.SEED_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.10"
+
       - name: Terraform Init
         run: make tf-init-ci ORG=${{ env.ORG }}
         env:
@@ -100,6 +105,11 @@ jobs:
         with:
           role-to-assume: ${{ secrets.SEED_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.10"
 
       - name: Terraform Init
         run: make tf-init-ci ORG=${{ env.ORG }}
