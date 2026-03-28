@@ -27,13 +27,21 @@ github_approver_teams = []
 # Add an entry for each repo + environment that needs to authenticate via OIDC.
 # Convention: "repo:<org>/<repo>:environment:<gh-env-name>"
 github_oidc_subjects = [
-  # Seed pipeline (this repo) — hoad-org environment
+  # ── Bootstrap / Seed pipeline (this repo) ──────────────────────────────────
   "repo:rhyscraig/aws-terraform-platform-tenant-bootstrap:ref:refs/heads/main",
   "repo:rhyscraig/aws-terraform-platform-tenant-bootstrap:environment:hoad-org",
 
-  # Terrorgem solution — production deployment
+  # ── Platform repos (deploy to management account) ──────────────────────────
+  "repo:rhyscraig/aws-terraform-platform-aws-org:environment:hoad-org",
+  "repo:rhyscraig/aws-terraform-platform-aws-accounts:environment:hoad-org",
+  "repo:rhyscraig/aws-terraform-platform-aws-baselines:environment:hoad-org",
+
+  # ── Solution repos (deploy to member accounts via CICD role assumption) ────
   "repo:rhyscraig/aws-terraform-solutions-terrorgem:ref:refs/heads/main",
   "repo:rhyscraig/aws-terraform-solutions-terrorgem:environment:terrorgem-prd",
+
+  # ── Websites (deploy to production account) ─────────────────────────────────
+  "repo:rhyscraig/website-static-html-craighoad.com:environment:terrorgem-prd",
 ]
 
 ############################################
