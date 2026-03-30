@@ -20,17 +20,33 @@ member_role_path_prefix = "/"
 # GITHUB / OIDC
 ############################################
 
-# Teams that must approve deployments in the fdr-gvc-approve GitHub environment.
-# Add team slugs to expand the approver group — create-gh-env.sh resolves them to IDs.
-github_approver_teams = ["is-cloudops"]
+# Teams that must approve deployments in the hoad-org-approve GitHub environment.
+github_approver_teams = []
 
 # Subjects for the GitHub Actions OIDC trust policy.
-# Format: repo:<github-org>/<repo>:environment:<tfvars-filename>
-# The bootstrap script derives these automatically — keep in sync here for Terraform.
+# Convention: "repo:<org>/<repo>:environment:<gh-env-name>" or ":ref:refs/heads/main"
 github_oidc_subjects = [
-  # Seed pipeline (self)
-  "repo:BT-IT-Infrastructure-CloudOps/aws-terraform-platform-tenant-seed:ref:refs/heads/main",
-  "repo:BT-IT-Infrastructure-CloudOps/aws-terraform-platform-tenant-seed:environment:hoad-org.tfvars",
+  # ── Bootstrap / Seed pipeline (this repo) ──────────────────────────────────
+  "repo:rhyscraig/aws-terraform-platform-tenant-bootstrap:ref:refs/heads/main",
+  "repo:rhyscraig/aws-terraform-platform-tenant-bootstrap:environment:hoad-org",
+
+  # ── Platform repos (deploy to management account) ──────────────────────────
+  "repo:rhyscraig/aws-terraform-platform-aws-org:environment:hoad-org",
+  "repo:rhyscraig/aws-terraform-platform-aws-accounts:environment:hoad-org",
+  "repo:rhyscraig/aws-terraform-platform-aws-baselines:environment:hoad-org",
+
+  # ── Solution repos (deploy to member accounts via CICD role assumption) ────
+  "repo:rhyscraig/aws-terraform-solutions-terrorgem:ref:refs/heads/main",
+  "repo:rhyscraig/aws-terraform-solutions-terrorgem:environment:terrorgem-prd",
+  "repo:rhyscraig/aws-terraform-solutions-websites:ref:refs/heads/main",
+  "repo:rhyscraig/aws-terraform-solutions-websites:environment:hoad-org",
+  "repo:rhyscraig/aws-terraform-solutions-banshee:ref:refs/heads/main",
+  "repo:rhyscraig/aws-terraform-solutions-banshee:environment:hoad-org",
+  "repo:rhyscraig/aws-terraform-solutions-asatst:ref:refs/heads/main",
+  "repo:rhyscraig/aws-terraform-solutions-asatst:environment:hoad-org",
+
+  # ── Website repos (deploy static content to production account) ────────────
+  "repo:rhyscraig/website-static-html-craighoad.com:environment:hoad-org",
 ]
 
 ############################################
