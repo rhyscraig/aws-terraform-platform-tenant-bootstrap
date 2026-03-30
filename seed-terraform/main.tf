@@ -35,7 +35,7 @@ resource "null_resource" "validate_region" {
 
 module "oidc_provider" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-github-oidc-provider"
-  version = "~> 5.0"
+  version = "6.4.0"
 
   # Defaults to token.actions.githubusercontent.com + sts.amazonaws.com audience.
   # Module auto-fetches current thumbprint(s) + includes well-known GitHub ones.
@@ -49,7 +49,7 @@ module "oidc_provider" {
 
 module "assume_member_roles_policy" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-policy"
-  version = "~> 5.0"
+  version = "6.4.0"
 
   name        = "${local.name_prefix}-assume-member-roles"
   description = "Allow the OIDC role to assume the CI/CD role in member accounts"
@@ -72,7 +72,7 @@ module "assume_member_roles_policy" {
 
 module "seed_oidc_policy" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-policy"
-  version = "~> 5.0"
+  version = "6.4.0"
 
   name        = "${local.name_prefix}-seed-infra"
   description = "Permissions for the seed pipeline to manage IAM, S3, KMS, CloudFormation, and Organizations"
@@ -96,7 +96,7 @@ module "seed_oidc_policy" {
 
 module "workloads_oidc_policy" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-policy"
-  version = "~> 5.0"
+  version = "6.4.0"
 
   name        = "${local.name_prefix}-workloads"
   description = "AWS service permissions for workload pipelines authenticating via the ${local.name_prefix} OIDC role"
@@ -134,7 +134,7 @@ module "workloads_oidc_policy" {
 
 module "workloads_oidc_role" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-github-oidc-role"
-  version = "~> 5.0"
+  version = "6.4.0"
 
   depends_on = [module.oidc_provider]
 
@@ -158,7 +158,7 @@ module "workloads_oidc_role" {
 
 module "kms_key" {
   source  = "terraform-aws-modules/kms/aws"
-  version = "~> 3.0"
+  version = "4.2.0"
 
   description             = "${local.name_prefix}-tfstate"
   deletion_window_in_days = 7
@@ -209,7 +209,7 @@ data "aws_iam_policy_document" "kms_s3_access" {
 
 module "state_bucket" {
   source  = "terraform-aws-modules/s3-bucket/aws"
-  version = "~> 4.0"
+  version = "5.11.0"
 
   count = 1
 
@@ -255,7 +255,7 @@ module "state_bucket" {
 
 module "logs_bucket" {
   source  = "terraform-aws-modules/s3-bucket/aws"
-  version = "~> 4.0"
+  version = "5.11.0"
 
   count = 1
 
