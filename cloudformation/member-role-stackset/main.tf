@@ -63,6 +63,7 @@ resource "aws_cloudformation_stack_set" "this" {
                   "dynamodb:*",
                   "cloudformation:*",
                   "route53:*",
+                  "route53domains:*",
                   "acm:*",
                   "cloudfront:*",
                   "apigateway:*",
